@@ -49,8 +49,9 @@ void Chip8::emulateCycle()
 			     // Execute opcode
 			break;
 
-		case 0x000E: // 0x00EE: Returns from subroutine          
-			     // Execute opcode
+		case 0x000E: // 0x00EE: Returns from subroutine
+			--sp;
+			pc = stack[sp];
 			break;
 
 		default:
@@ -59,14 +60,45 @@ void Chip8::emulateCycle()
 		}
 		break;
 
+	case 0x1000: // 0x1NNN: Jumps to address NNN.
+		pc = opcode & 0x0FFF;
+		break;
+
 	case 0x2000: // 0x2NNN: Calls subroutine at NNN
 		stack[sp] = pc;
 		++sp;
 		pc = opcode & 0x0FFF;
 		break;
 
-	case 0xA000: // ANNN: Sets I to the address NNN
-		I = opcode & 0x0FFF;
+	case 0x3000: // 0x3XNN: Skips the next instruction if VX equals NN. 
+		if (V[(opcode & 0x0F00) >> 8] == opcode & 0x00FF)
+			pc += 4;
+		else
+			pc += 2;
+		break;
+
+	case 0x4000: // 0x4XNN: Skips the next instruction if VX doesn't equal NN
+		if (V[(opcode & 0x0F00) >> 8] != opcode & 0x00FF)
+			pc += 4;
+		else
+			pc += 2;
+
+		break;
+
+	case 0x5000: // 0x5XY0: Skips the next instruction if VX equals VY.
+		if (V[(opcode & 0x0F00) >> 8] == V[(opcode & 0x00F0) >> 4])
+			pc += 4;
+		else
+			pc += 2;
+		break;
+
+	case 0x6000: // 0x6VNN: Sets VX to NN.
+		V[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
+		pc += 2;
+		break;
+
+	case 0x7000: // 0x7XNN: Adds NN to VX. (Carry flag is not changed)
+		V[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
 		pc += 2;
 		break;
 
@@ -86,6 +118,22 @@ void Chip8::emulateCycle()
 			printf("Unknown opcode [0x8000]: 0x%X\n", opcode);
 			break;
 		}
+
+	case 0x9000: // 0x9XY0: Skips the next instruction if VX doesn't equal VY.
+		if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4])
+			pc += 4;
+		else
+			pc += 2;
+		break;
+
+	case 0xA000: // ANNN: Sets I to the address NNN
+		I = opcode & 0x0FFF;
+		pc += 2;
+		break;
+
+	case 0xB000: // 0xBNNN: Jumps to the address NNN plus V0.
+		pc = (opcode & 0x0FFF) + V[0];
+		break;
 
 	case 0xD000: // Draws a sprite at coordinate (VX, VY) that 
 		     // has a width of 8 pixels and a height of N pixels.
